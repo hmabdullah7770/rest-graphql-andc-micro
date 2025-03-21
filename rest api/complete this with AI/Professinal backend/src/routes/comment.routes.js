@@ -12,9 +12,12 @@ const router = Router();
 
 router.use(verifyJWT); // Apply verifyJWT middleware to all routes in this file
 
-// Generic routes that work for both videos and cards
+// Route to get comments
 router.route("/:contentType/:contentId")
-    .get(getComments)
+    .get(getComments);
+
+// Route to add a comment
+router.route("/:contentId")
     .post(addComment);
 
 // Route to get comments with their ratings

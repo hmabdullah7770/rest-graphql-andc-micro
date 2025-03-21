@@ -5,7 +5,6 @@ import {Video} from "../models/video.model.js"
 import {ApiError} from "../utils/ApiErrors.js"
 import {ApiResponse} from "../utils/ApiResponse.js"
 import {asyncHandler} from "../utils/asyncHandler.js"
-import {ContentRegistry} from "../models/contentRegistry.model.js"
 
 // Helper function to get the appropriate model based on contentType
 const getContentModel = (contentType) => {
@@ -122,21 +121,18 @@ const getComments = asyncHandler(async (req, res) => {
 
 const addComment = asyncHandler(async (req, res) => {
     const { contentId } = req.params;
-    const { content } = req.body;
+    const { content, contentType } = req.body; // Get contentType from body
     
     if (!isValidObjectId(contentId)) {
         throw new ApiError(400, "Invalid content ID");
     }
     
-    // Look up content type in registry - single query instead of multiple
-    const contentInfo = await ContentRegistry.findOne({ originalId: contentId });
-    
-    if (!contentInfo) {
-        throw new ApiError(404, "Content not found");
+    if (!["card", "video"].includes(contentType)) {
+        throw new ApiError(400, "Invalid content type");
     }
     
     // Get the content model
-    const ContentModel = getContentModel(contentInfo.contentType);
+    const ContentModel = getContentModel(contentType);
     
     // Fetch the actual content
     const contentDoc = await ContentModel.findById(contentId);
@@ -149,7 +145,7 @@ const addComment = asyncHandler(async (req, res) => {
     const comment = await Comment.create({
         content,
         contentId,
-        contentType: contentInfo.contentType,
+        contentType,
         owner: req.userVerfied._id
     });
     

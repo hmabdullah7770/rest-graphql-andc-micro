@@ -30,6 +30,8 @@ setupSwagger(app);
 import userRouter from './routes/user.routes.js'
 import cardRouter from "./routes/card.routes.js"
 import healthcheckRouter from "./routes/healthcheck.routes.js"
+// import ratingRouter from "./routes/rating.routes.js"
+import ratingRoutes from "./routes/rating.routes.js";
 // import tweetRouter from "./routes/tweet.routes.js"
 // import subscriptionRouter from "./routes/subscription.routes.js"
 import followlistRouter from "./routes/followlist.routes.js"
@@ -48,6 +50,7 @@ app.use("/api/v1/followlist", followlistRouter)
 app.use("/api/v1/cards", cardRouter)
 app.use("/api/v1/videos", videoRouter)
 app.use("/api/v1/comments", commentRouter)
+app.use("/api/v1/ratings", ratingRoutes)
 // app.use("/api/v1/likes", likeRouter)
 // app.use("/api/v1/playlist", playlistRouter)
 // app.use("/api/v1/dashboard", dashboardRouter)
