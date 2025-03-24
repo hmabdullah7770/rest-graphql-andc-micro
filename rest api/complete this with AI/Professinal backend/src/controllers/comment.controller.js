@@ -18,6 +18,107 @@ const getContentModel = (contentType) => {
     }
 };
 
+// const getComments = asyncHandler(async (req, res) => {
+//     const {contentId, contentType} = req.params;
+//     const {page = 1, limit = 10, sortBy = "createdAt", sortType = "desc"} = req.query;
+    
+//     if (!isValidObjectId(contentId)) {
+//         throw new ApiError(400, "Invalid content ID");
+//     }
+    
+//     if (!["card", "video"].includes(contentType)) {
+//         throw new ApiError(400, "Invalid content type");
+//     }
+    
+//     // Get the appropriate model
+//     const ContentModel = getContentModel(contentType);
+    
+//     // Check if content exists and is published
+//     const content = await ContentModel.findOne({_id: contentId, isPublished: true});
+    
+//     if (!content) {
+//         throw new ApiError(404, `${contentType.charAt(0).toUpperCase() + contentType.slice(1)} not found`);
+//     }
+    
+//     const pageNumber = parseInt(page, 10);
+//     const limitNumber = parseInt(limit, 10);
+//     const skip = (pageNumber - 1) * limitNumber;
+    
+//     // Prepare sort options
+//     const sortOptions = {};
+    
+//     if (sortBy) {
+//         sortOptions[sortBy] = sortType === "desc" ? -1 : 1;
+//     } else {
+//         sortOptions.createdAt = -1; // Default sort by newest first
+//     }
+    
+//     // Get comments with populated user info
+//     const commentsAggregate = Comment.aggregate([
+//         {
+//             $match: {
+//                 contentId: new mongoose.Types.ObjectId(contentId),
+//                 contentType
+//             }
+//         },
+//         {
+//             $lookup: {
+//                 from: "users",
+//                 localField: "owner",
+//                 foreignField: "_id",
+//                 as: "owner",
+//                 pipeline: [
+//                     {
+//                         $project: {
+//                             username: 1,
+//                             fullName: 1,
+//                             avatar: 1
+//                         }
+//                     }
+//                 ]
+//             }
+//         },
+//         {
+//             $addFields: {
+//                 owner: { $arrayElemAt: ["$owner", 0] }
+//             }
+//         },
+//         {
+//             $sort: sortOptions
+//         },
+//         {
+//             $skip: skip
+//         },
+//         {
+//             $limit: limitNumber
+//         }
+//     ]);
+    
+//     const result = await commentsAggregate.exec();
+    
+//     // Get total count for pagination
+//     const totalComments = await Comment.countDocuments({contentId, contentType});
+    
+//     // Calculate pagination info
+//     const totalPages = Math.ceil(totalComments / limitNumber);
+//     const hasNextPage = pageNumber < totalPages;
+//     const hasPrevPage = pageNumber > 1;
+    
+//     return res.status(200).json(
+//         new ApiResponse(200, {
+//             comments: result,
+//             pagination: {
+//                 page: pageNumber,
+//                 limit: limitNumber,
+//                 totalComments,
+//                 totalPages,
+//                 hasNextPage,
+//                 hasPrevPage
+//             }
+//         }, "Comments fetched successfully")
+//     );
+// });
+
 const getComments = asyncHandler(async (req, res) => {
     const {contentId, contentType} = req.params;
     const {page = 1, limit = 10, sortBy = "createdAt", sortType = "desc"} = req.query;
@@ -53,12 +154,36 @@ const getComments = asyncHandler(async (req, res) => {
         sortOptions.createdAt = -1; // Default sort by newest first
     }
     
-    // Get comments with populated user info
+    // Get comments with populated user info and reply count
     const commentsAggregate = Comment.aggregate([
         {
             $match: {
                 contentId: new mongoose.Types.ObjectId(contentId),
-                contentType
+                contentType,
+                isReply: false // Only get top-level comments
+            }
+        },
+        {
+            // Look up reply count
+            $lookup: {
+                from: "comments",
+                let: { commentId: "$_id" },
+                pipeline: [
+                    {
+                        $match: {
+                            $expr: {
+                                $and: [
+                                    { $eq: ["$parentComment", "$$commentId"] },
+                                    { $eq: ["$isReply", true] }
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        $count: "replyCount"
+                    }
+                ],
+                as: "repliesInfo"
             }
         },
         {
@@ -80,7 +205,19 @@ const getComments = asyncHandler(async (req, res) => {
         },
         {
             $addFields: {
-                owner: { $arrayElemAt: ["$owner", 0] }
+                owner: { $arrayElemAt: ["$owner", 0] },
+                replyCount: {
+                    $cond: [
+                        { $gt: [{ $size: "$repliesInfo" }, 0] },
+                        { $arrayElemAt: ["$repliesInfo.replyCount", 0] },
+                        0
+                    ]
+                }
+            }
+        },
+        {
+            $project: {
+                repliesInfo: 0 // Remove the array
             }
         },
         {
@@ -96,8 +233,12 @@ const getComments = asyncHandler(async (req, res) => {
     
     const result = await commentsAggregate.exec();
     
-    // Get total count for pagination
-    const totalComments = await Comment.countDocuments({contentId, contentType});
+    // Get total count for pagination (only top-level comments)
+    const totalComments = await Comment.countDocuments({
+        contentId,
+        contentType,
+        isReply: false
+    });
     
     // Calculate pagination info
     const totalPages = Math.ceil(totalComments / limitNumber);
@@ -118,6 +259,7 @@ const getComments = asyncHandler(async (req, res) => {
         }, "Comments fetched successfully")
     );
 });
+
 
 const addComment = asyncHandler(async (req, res) => {
     const { contentId } = req.params;
@@ -349,10 +491,151 @@ const getCommentsWithRatings = asyncHandler(async (req, res) => {
     );
 });
 
+// Add these functions to your comment.controller.js
+
+// Add a reply to a comment
+const addReply = asyncHandler(async (req, res) => {
+    const { commentId } = req.params;
+    const { content } = req.body;
+    
+    if (!isValidObjectId(commentId)) {
+        throw new ApiError(400, "Invalid comment ID");
+    }
+    
+    if (!content || !content.trim()) {
+        throw new ApiError(400, "Reply content is required");
+    }
+    
+    // Find the parent comment
+    const parentComment = await Comment.findById(commentId);
+    
+    if (!parentComment) {
+        throw new ApiError(404, "Parent comment not found");
+    }
+    
+    // Create the reply
+    const reply = await Comment.create({
+        content,
+        contentId: parentComment.contentId,
+        contentType: parentComment.contentType,
+        owner: req.userVerfied._id,
+        parentComment: commentId,
+        isReply: true
+    });
+    
+    // Return reply with user info
+    const populatedReply = await Comment.findById(reply._id)
+        .populate("owner", "username fullName avatar");
+    
+    return res.status(201).json(
+        new ApiResponse(201, populatedReply, "Reply added successfully")
+    );
+});
+
+// Get replies for a specific comment
+const getReplies = asyncHandler(async (req, res) => {
+    const { commentId } = req.params;
+    const { page = 1, limit = 10, sortBy = "createdAt", sortType = "desc" } = req.query;
+    
+    if (!isValidObjectId(commentId)) {
+        throw new ApiError(400, "Invalid comment ID");
+    }
+    
+    // Check if parent comment exists
+    const parentComment = await Comment.findById(commentId);
+    
+    if (!parentComment) {
+        throw new ApiError(404, "Parent comment not found");
+    }
+    
+    const pageNumber = parseInt(page, 10);
+    const limitNumber = parseInt(limit, 10);
+    const skip = (pageNumber - 1) * limitNumber;
+    
+    // Prepare sort options
+    const sortOptions = {};
+    
+    if (sortBy) {
+        sortOptions[sortBy] = sortType === "desc" ? -1 : 1;
+    } else {
+        sortOptions.createdAt = -1; // Default sort by newest first
+    }
+    
+    // Get replies with populated user info
+    const repliesAggregate = Comment.aggregate([
+        {
+            $match: {
+                parentComment: new mongoose.Types.ObjectId(commentId),
+                isReply: true
+            }
+        },
+        {
+            $lookup: {
+                from: "users",
+                localField: "owner",
+                foreignField: "_id",
+                as: "owner",
+                pipeline: [
+                    {
+                        $project: {
+                            username: 1,
+                            fullName: 1,
+                            avatar: 1
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            $addFields: {
+                owner: { $arrayElemAt: ["$owner", 0] }
+            }
+        },
+        {
+            $sort: sortOptions
+        },
+        {
+            $skip: skip
+        },
+        {
+            $limit: limitNumber
+        }
+    ]);
+    
+    const result = await repliesAggregate.exec();
+    
+    // Get total count for pagination
+    const totalReplies = await Comment.countDocuments({
+        parentComment: commentId,
+        isReply: true
+    });
+    
+    // Calculate pagination info
+    const totalPages = Math.ceil(totalReplies / limitNumber);
+    const hasNextPage = pageNumber < totalPages;
+    const hasPrevPage = pageNumber > 1;
+    
+    return res.status(200).json(
+        new ApiResponse(200, {
+            replies: result,
+            pagination: {
+                page: pageNumber,
+                limit: limitNumber,
+                totalReplies,
+                totalPages,
+                hasNextPage,
+                hasPrevPage
+            }
+        }, "Replies fetched successfully")
+    );
+});
+
 export {
     getComments,
     addComment,
     updateComment,
     deleteComment,
-    getCommentsWithRatings
+    getCommentsWithRatings,
+    addReply,
+    getReplies
 }

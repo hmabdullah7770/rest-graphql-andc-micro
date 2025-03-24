@@ -1,5 +1,6 @@
 import mongoose, { Schema } from "mongoose";
 import mongooseAggregatePaginate from "mongoose-aggregate-paginate-v2";
+import  {Comment}  from "./comment.model.js";
 
 const cardSchema = new Schema({
     title: {
@@ -74,6 +75,17 @@ const cardSchema = new Schema({
     }
 }, { timestamps: true })
 
+
+// In card.model.js
+cardSchema.static('findByIdAndDelete', async function(id) {
+    // First delete all comments associated with this card
+    await Comment.deleteMany({ contentId: id, contentType: "card" });
+    
+    // Then delete the card
+    return this.findOneAndDelete({ _id: id });
+  });
+
+
 // Custom validator to ensure at least one social link is provided
 // cardSchema.pre('validate', function(next) {
 //     if (
@@ -91,6 +103,7 @@ cardSchema.plugin(mongooseAggregatePaginate)
 
 // Add text indexes for search
 cardSchema.index({ title: "text", description: "text" });
+
 
 // Add regular indexes for common queries
 cardSchema.index({ owner: 1 });
