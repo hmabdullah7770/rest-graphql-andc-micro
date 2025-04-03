@@ -14,19 +14,17 @@ const cardSchema = new Schema({
         required: true,
         trim: true
     },
-    // cardFile: {
-    //     type: String,  //coludnary url
-    //     required: true
-    // },
+    category: {
+        type: String,
+        required: true,
+        trim: true,
+        index: true
+    },
     owner: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
         required: true
     },
-    // duration: {
-    //     type: Number,
-    //     required: true
-    // },
     thumbnail: {
         type: String,   //cloudnary url
         required: true
@@ -85,28 +83,14 @@ cardSchema.static('findByIdAndDelete', async function(id) {
     return this.findOneAndDelete({ _id: id });
   });
 
-
-// Custom validator to ensure at least one social link is provided
-// cardSchema.pre('validate', function(next) {
-//     if (
-//         !this.whatsapp && 
-//         !this.storeLink && 
-//         !this.facebook && 
-//         !this.instagram
-//     ) {
-//         this.invalidate('socialLinks', 'At least one social link (WhatsApp, storeLink, Facebook, or Instagram) is required');
-//     }
-//     next();
-// });
-
 cardSchema.plugin(mongooseAggregatePaginate)
 
-// Add text indexes for search
-cardSchema.index({ title: "text", description: "text" });
-
+// Add text indexes for search including category
+cardSchema.index({ title: "text", description: "text", category: "text" });
 
 // Add regular indexes for common queries
 cardSchema.index({ owner: 1 });
+// cardSchema.index({ category: 1 });
 cardSchema.index({ averageRating: -1 });
 cardSchema.index({ totalViews: -1 });
 cardSchema.index({ isPublished: 1 });

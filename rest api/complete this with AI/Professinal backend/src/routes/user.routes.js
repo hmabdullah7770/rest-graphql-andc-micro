@@ -1,6 +1,7 @@
 
 import express from 'express';
 import { 
+    verifyEmail,
     registerUser,
     loginUser, 
     logOut,
@@ -22,6 +23,8 @@ import {upload} from '../middlewares/multer.middleware.js';
 import VerfyJwt from '../middlewares/auth.middleware.js';
 
 const router = express.Router();
+
+router.post('/verify-email',verifyEmail)
 
 router.post('/register',
     upload.fields([

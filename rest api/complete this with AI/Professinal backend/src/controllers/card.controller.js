@@ -187,10 +187,14 @@ const getCardById = asyncHandler(async (req, res) => {
 
 // Create Card
 const publishCard = asyncHandler(async (req, res) => {
-    const { title, description, ...socialPayload } = req.body;
+    const { title, description, category, ...socialPayload } = req.body;
     
     if (!title || !description) {
         throw new ApiError(400, "Title and description are required");
+    }
+
+    if ( !category) {
+        throw new ApiError(400, "Category is required");
     }
 
     const user = await User.findById(req.userVerfied._id);
@@ -229,6 +233,7 @@ const publishCard = asyncHandler(async (req, res) => {
         const card = await Card.create({
             title,
             description,
+            category,
             thumbnail: thumbnail.url,
             owner: user._id,
             ...socialLinks.socialLinks 
@@ -252,7 +257,7 @@ const publishCard = asyncHandler(async (req, res) => {
 
 const updateCard = asyncHandler(async (req, res) => {
     const { cardId } = req.params;
-    const { title, description, ...socialPayload } = req.body;
+    const { title,  category, description, ...socialPayload } = req.body;
     
     const card = await Card.findById(cardId);
     if (!card) throw new ApiError(404, "Card not found");
@@ -268,7 +273,7 @@ const updateCard = asyncHandler(async (req, res) => {
         // Add title/description updates if provided
         if (title) updateOps.$set.title = title;
         if (description) updateOps.$set.description = description;
-        
+        if (category) updateOps.$set.description = category;
         // Handle thumbnail upload (only if provided)
         const thumbnailLocalPath = req.files?.thumbnail?.[0]?.path;
         if (thumbnailLocalPath) {

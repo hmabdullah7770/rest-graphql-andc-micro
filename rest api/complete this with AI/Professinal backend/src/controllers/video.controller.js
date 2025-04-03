@@ -114,12 +114,14 @@ const getAllVideos = asyncHandler(async (req, res) => {
 })
 
 const publishAVideo = asyncHandler(async (req, res) => {
-    const { title, description, whatsapp, storeLink, facebook, instagram, productlink } = req.body;
+    const { title,category,description, whatsapp, storeLink, facebook, instagram, productlink } = req.body;
     
     // Validation
-    if (!title || !description) {
-        throw new ApiError(400, "Title and description are required");
+    if (!title || !description || !category) {
+        throw new ApiError(400, "Title , description and categoury are required");
     }
+
+     
     
     // Get the user
     const user = await User.findById(req.userVerfied._id);
@@ -175,6 +177,7 @@ const publishAVideo = asyncHandler(async (req, res) => {
     // Create the video with only the selected social links
     const videoData = {
         title,
+        category,
         description,
         videoFile: videoFile.url,
         thumbnail: thumbnail.url,

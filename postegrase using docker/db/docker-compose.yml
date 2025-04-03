@@ -1,0 +1,22 @@
+version: '3'
+services:
+  db:
+    image: postgres
+    restart: always
+    volumes:
+      - ./data/db:/var/lib/postgresql/data
+    ports:
+      - 5432:5432  # make sure you don't have another container running on 5432
+
+    environment:
+      - POSTGRES_DB=EcomverseDB
+      - POSTGRES_USER=Abdullah
+      - POSTGRES_PASSWORD=Abdullah(417)
+
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - 8080:8080
+# connection string
+      # postgresql://Abdullah:Abdullah(417)@localhost:5432/EcomverseDB

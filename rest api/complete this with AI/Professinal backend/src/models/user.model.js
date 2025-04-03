@@ -2,8 +2,6 @@ import mongoose, {Schema} from "mongoose";
 import bcrypt from "bcrypt"
 import jwt from 'jsonwebtoken'
 
-
-
 //i want to use one of them of them (watsapp,storelink,facebook,instaram)  is required use enum or other to make reuired in enum we select one of them but we can select multiple of them or all or one of them so validation is at lest one of them is required
 
 const userSchema = new Schema({
@@ -17,6 +15,10 @@ const userSchema = new Schema({
         index: true
 
 
+    },
+    otp: { type: String, required: true },
+    bio:{
+        type: String,
     },
     email: {
         type: String,
@@ -34,6 +36,13 @@ const userSchema = new Schema({
         required: true,
         trim: true,
         index: true
+    },
+
+    age:{type: Number , required: true},
+    gender:{
+        type: String,
+        enum: ['male', 'female', 'transgender', 'other'],
+        required: true,
     },
     // addtoFavouret: {
     //     type: mongoose.Schema.Types.ObjectId,

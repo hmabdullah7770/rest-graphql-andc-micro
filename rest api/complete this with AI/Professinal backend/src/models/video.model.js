@@ -10,6 +10,12 @@ const videoSchema = new Schema({
         type: String,
         required: true
     },
+    category: {
+        type: String,
+        required: true,
+        trim: true,
+        index: true
+    },
     videoFile: {
         type: String,  // cloudinary url
         required: true
@@ -82,10 +88,11 @@ videoSchema.pre('validate', function(next) {
 videoSchema.plugin(mongooseAggregatePaginate);
 
 // Add text indexes for search
-videoSchema.index({ title: "text", description: "text" });
+videoSchema.index({ title: "text", description: "text" , category:"text"});
 
 // Add regular indexes for common queries
 videoSchema.index({ owner: 1 });
+// videoSchema.index({ category: 1 });
 videoSchema.index({ averageRating: -1 });
 videoSchema.index({ onclicks: -1 });
 videoSchema.index({ Uploaded: 1 });

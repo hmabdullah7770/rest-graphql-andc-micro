@@ -17,6 +17,78 @@ const generateAccessTokenAndRefreshToken = async (userId) => {
   return { accessToken, refreshToken };
 };
 
+export const verifyEmail = asyncHandler(async(req,res)=>{
+
+  const {email} = req.body
+
+  if(!email){
+
+    throw new ApiError(400,"email is required for Email Verification")
+  }
+   
+  const user = await User.findOne({email})
+
+  if(user){
+    throw new ApiError(409, "user already exist")
+  }
+
+
+   // Check for existing OTP and delete it
+   await Otp.deleteMany({ 
+    email, 
+    purpose: 'registration'
+  });
+
+  //generate otp
+
+     const otp = Math.floor(100000 + Math.random() * 900000).toString();
+     console.log("otp is :",otp)
+    const otpHash = await bcrypt.hash(otp, 10);
+    console.log("otpHash is :",otpHash)
+    const expiresAt = new Date(Date.now() + 20 * 60 * 1000); // 5 minutes
+
+    await Otp.create({
+      email,
+      otp: otpHash,
+      expiresAt,
+      purpose: 'registration'
+    });
+
+    // Send email using nodemailer
+    try {
+      await transporter.sendMail({
+        from: process.env.EMAIL_FROM,
+        to: email,
+        subject: "Email Verification OTP",
+        text: `Your Email Verification OTP is ${otp}. It will expire in 20 minutes.`,
+        html: `
+          <div>
+            <h3>Email Verification Request</h3>
+            <p>Your OTP code is: <strong>${otp}</strong></p>
+            <p>This code will expire in 5 minutes.</p>
+          </div>
+        `
+      });
+    } catch (error) {
+     res.json(500,"Failed to  Verifiy email");
+      // Clean up OTP if email fails
+      await Otp.deleteOne({ email, purpose: 'registration' });
+      return res.json(
+         500 ,"Failed to send reset email"
+      );
+    }
+
+
+    return res.status(200).json(
+      new ApiResponse(
+        201,
+      
+        { messege: "OTP sent to your email" }
+      )
+    );
+});
+
+
 export const registerUser = asyncHandler(async (req, res) => {
   // res.status(200).json({
   //     message: "user registered succesfully"
@@ -32,7 +104,7 @@ export const registerUser = asyncHandler(async (req, res) => {
   // remove the password and refresh token from responce
   // return response
 
-  const { username, email, password, fullName, whatsapp, storeLink, facebook, instagram, productlink } = req.body;
+  const { username, email, otp,password, fullName, whatsapp, storeLink, facebook, instagram, productlink, gender, age, bio } = req.body;
   console.log("email is :", email);
 
   //-----for biggners this is good methord but we write professional so we follow another
@@ -45,10 +117,13 @@ export const registerUser = asyncHandler(async (req, res) => {
   //console.log("username is:",username.trim(), "email", email.trim());
 
   if (
-    [username, email, password, fullName].some((fields) => fields?.trim() == "")
+    [username, email, password, fullName, gender, age, bio,otp].some((fields) => fields?.trim() == "")
   ) {
     throw new ApiError(400, "All fields are required some of them are empty");
   }
+
+ 
+
 
   // Check if at least one social link is provided
   if (!whatsapp && !storeLink && !facebook && !instagram) {
@@ -101,6 +176,33 @@ export const registerUser = asyncHandler(async (req, res) => {
     throw new ApiError(500, "Avatar is not on cloudnary");
   }
 
+  const otpRecord = await Otp.findOne({ email, purpose:'registration' });
+  if (!otpRecord) {
+    
+   throw new ApiError(404,"Invalid or expired OTP empty") 
+  }
+
+  const isValid = await bcrypt.compare(otp, otpRecord.otp);
+  const isExpired = otpRecord.expiresAt < new Date();
+
+  if(!isValid){
+    ApiError(
+       401,"Invalid Otp please enter the valid otp")}
+
+
+       if (isExpired) {
+       
+        // Cleanup expired/invalid OTP
+        await Otp.deleteOne({ _id: otpRecord._id });
+        ApiError( 400,
+           " Expired OTP ...");
+      }
+
+       // Cleanup O
+    // Cleanup OTP
+    await Otp.deleteOne({ email, purpose: 'registration' });
+
+
   const createuser = await User.create({
     username,
     email,
@@ -108,6 +210,10 @@ export const registerUser = asyncHandler(async (req, res) => {
     coverImage: coverImage?.url || "",
     password,
     fullName,
+    gender,
+    age,
+    otp,
+    bio,
     whatsapp,
     storeLink,
     facebook,
@@ -116,7 +222,7 @@ export const registerUser = asyncHandler(async (req, res) => {
   });
 
   const createdUser = await User.findById(createuser._id).select(
-    " -password -refreshToken"
+    " -password -refreshToken -otp"
   );
 
   if (!createdUser) {
