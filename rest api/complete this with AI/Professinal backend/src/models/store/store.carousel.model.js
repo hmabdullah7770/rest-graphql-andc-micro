@@ -104,12 +104,7 @@ const bannerSchema = new Schema({
               required: function() { return this.buttonborder; }
           },
 
-    category: {
-        type: String,
-        required: true,
-        trim: true,
-        index: true
-    },
+   
     owner: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
@@ -131,10 +126,10 @@ const bannerSchema = new Schema({
     // },
 
 
-      layout: { 
-        type: String, 
-        enum: ["left-image", "right-image", "full-image"], 
-        default: "full-image"
+      images: { 
+        type: [String], 
+        
+       
       },
 
       ImageAlt: { 
@@ -160,10 +155,10 @@ const bannerSchema = new Schema({
         default: true
     },
 
-    animationType: { type: String, enum: ["none", "fade", "slide"], default: "none" },
+    // animationType: { type: String, enum: ["none", "fade", "slide"], default: "none" },
 
-    animationDuration: { type: Number, default: 0.5 }, // Seconds
-    animationDelay: { type: Number, default: 0 },
+    // animationDuration: { type: Number, default: 0.5 }, // Seconds
+    // animationDelay: { type: Number, default: 0 },
     
     
       // Typography
