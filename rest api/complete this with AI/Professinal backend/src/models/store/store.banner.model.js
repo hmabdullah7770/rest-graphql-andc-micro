@@ -175,56 +175,11 @@ const bannerSchema = new Schema({
 
 
        clickCount: { type: Number, default: 0 }
-    // // Social links - optional fields that can be included from user profile
-    // whatsapp: {
-    //     type: Number
-    // },
-    // storeLink: {
-    //     type: String
-    // },
-    // facebook: {
-    //     type: String
-    // },
-    // instagram: {
-    //     type: String
-    // },
-    // productlink: {
-    //     type: String
-
-    // }
-
-    //we provide 3D option too to banner
-
-    // },
-    // // Rating statistics
-    // totalRating: {
-    //     type: Number,
-    //     default: 0
-    // },
-    // ratingCount: {
-    //     type: Number,
-    //     default: 0
-    // },
-    // averageRating: {
-    //     type: Number,
-    //     default: 0
-    // },
-    // // View tracking
-    // totalViews: {
-    //     type: Number,
-    //     default: 0
-    // }
+    
 }, { timestamps: true })
 
 
-// // In card.model.js
-// bannerSchema.static('findByIdAndDelete', async function(id) {
-//     // First delete all comments associated with this card
-//     await Comment.deleteMany({ contentId: id, contentType: "card" });
-    
-//     // Then delete the card
-//     return this.findOneAndDelete({ _id: id });
-//   });
+
 
   bannerSchema.plugin(mongooseAggregatePaginate)
 
@@ -241,6 +196,6 @@ bannerSchema.index({ category: 1 });
 // cardSchema.index({ category: 1 });
 // bannerSchema.index({ averageRating: -1 });
 // bannerSchema.index({ totalViews: -1 });
-bannerSchema.index({ isPublished: 1 });
+// bannerSchema.index({ isPublished: 1 });
 
 export default mongoose.model("Banner", bannerSchema)

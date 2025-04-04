@@ -6,28 +6,32 @@ const bannerSchema = new Schema({
     
     bigheadingText: {
         type: String,
-        required: true,
+        // required: true,
         trim: true,
         index: true
+    },
+    bannerrank:{
+     type:Number,
+     required:true,
     },
 
     bigheadingSize: {
         type: String,
-        required: true,
+        // required: true,
         trim: true,
         index: true,
         required: function() { return this.bigheadingText}
     },
     bigheadingColor: {
         type: String,
-        required: true,
+        // required: true,
         trim: true,
         index: true,
         required: function() { return this.bigheadingText}
     },
     bigheadingBackground: {
         type: String,
-        required: true,
+        // required: true,
         trim: true,
         index: true,
         required: function() { return this.bigheadingText}
@@ -35,26 +39,26 @@ const bannerSchema = new Schema({
     },
     smallheadingText: {
         type: String,
-        required: true,
+        // required: true,
         trim: true,
         
     },
 
     smallheadingSize: {
         type: String,
-        required: true,
+        // required: true,
         trim: true,
         required: function() { return this.smallheadingText}
     },
     smallheadingColor: {
         type: String,
-        required: true,
+        // required: true,
         trim: true,
         required: function() { return this.smallheadingText}
     },
     smallheadingBackgroundcolor: {
         type: String,
-        required: true,
+        // required: true,
         trim: true,
         required: function() { return this.smallheadingText}
     },
@@ -131,14 +135,16 @@ const bannerSchema = new Schema({
     // },
 
 
-      layout: { 
-        type: String, 
+      Image: { 
+        type: String,
+        required:true, 
         enum: ["left-image", "right-image", "full-image"], 
         default: "full-image"
       },
 
       ImageAlt: { 
         type: String, 
+        required:true,
         required: true, 
         default: "Banner Background" 
       },
